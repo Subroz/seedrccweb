@@ -612,6 +612,6 @@ If you find this project useful, please consider giving it a star on GitHub! ⭐
 ---
 
 <p align="center">
-  <strong>Made with ❤️ and ⚡</strong><br>
+  <strong>Made with ❤️ by Subro</strong><br>
   <sub>Powered by Flask • Seedr.cc • Python</sub>
 </p>
