@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudTorrent · Public File Browser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0d0a0f;
+            --bg-card: rgba(26, 20, 24, 0.8);
+            --bg-elevated: rgba(40, 30, 35, 0.6);
+            --accent-primary: #ff9500;
+            --accent-secondary: #ff4757;
+            --accent-tertiary: #f39c12;
+            --text-primary: #fff8f0;
+            --text-secondary: #c4b5a8;
+            --text-muted: #7a6e65;
+            --border-color: rgba(255, 149, 0, 0.15);
+            --success: #2ecc71;
+            --error: #ff4757;
+            --warning: #f39c12;
+            --gradient-1: linear-gradient(135deg, #ff9500 0%, #ff4757 100%);
+            --gradient-2: linear-gradient(135deg, #ff4757 0%, #f39c12 100%);
+            --gradient-3: linear-gradient(135deg, #e67e22 0%, #ff6b6b 50%, #ffa502 100%);
+            --glow-primary: 0 0 40px rgba(255, 149, 0, 0.3);
+            --glow-secondary: 0 0 40px rgba(255, 71, 87, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .logo-text, .section-title {
+            font-family: 'Sora', sans-serif;
+        }
+
+        /* Aurora Animated Background */
+        .bg-aurora {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .aurora-layer {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+        }
+
+        .aurora-1 {
+            background: 
+                radial-gradient(ellipse 80% 50% at 20% 40%, rgba(255, 149, 0, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse 60% 40% at 70% 60%, rgba(255, 71, 87, 0.12) 0%, transparent 50%);
+            animation: aurora1 18s ease-in-out infinite;
+        }
+
+        .aurora-2 {
+            background: 
+                radial-gradient(ellipse 70% 60% at 80% 30%, rgba(243, 156, 18, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse 50% 70% at 30% 70%, rgba(255, 107, 107, 0.08) 0%, transparent 50%);
+            animation: aurora2 22s ease-in-out infinite reverse;
+        }
+
+        .aurora-3 {
+            background: 
+                radial-gradient(ellipse 90% 40% at 50% 50%, rgba(230, 126, 34, 0.08) 0%, transparent 60%);
+            animation: aurora3 25s ease-in-out infinite;
+        }
+
+        @keyframes aurora1 {
+            0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            33% { transform: translate(5%, 3%) rotate(2deg) scale(1.05); }
+            66% { transform: translate(-3%, 5%) rotate(-1deg) scale(0.98); }
+        }
+
+        @keyframes aurora2 {
+            0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            33% { transform: translate(-4%, 4%) rotate(-2deg) scale(1.02); }
+            66% { transform: translate(4%, -3%) rotate(1deg) scale(1.04); }
+        }
+
+        @keyframes aurora3 {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+            50% { transform: translate(2%, 2%) scale(1.1); opacity: 1; }
+        }
+
+        /* Subtle noise texture overlay */
+        .bg-noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 52px;
+            height: 52px;
+            background: var(--gradient-1);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            box-shadow: var(--glow-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-icon::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.2) 50%, transparent 60%);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        .logo-text {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .storage-bar {
+            width: 150px;
+            height: 10px;
+            background: rgba(255, 149, 0, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 149, 0, 0.2);
+        }
+
+        .storage-fill {
+            height: 100%;
+            background: var(--gradient-1);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(255, 149, 0, 0.5);
+        }
+
+        .storage-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: var(--bg-dark);
+            box-shadow: var(--glow-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(0, 245, 212, 0.5);
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-card);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+        }
+
+        .btn-ghost:hover {
+            color: var(--accent-primary);
+        }
+
+        .btn-stream {
+            background: linear-gradient(135deg, #ff006e 0%, #ff4d6d 100%);
+            color: white;
+        }
+
+        .btn-stream:hover {
+            box-shadow: 0 0 30px rgba(255, 0, 110, 0.5);
+        }
+
+        /* Storage Warning Banner */
+        .storage-warning {
+            background: linear-gradient(135deg, rgba(255, 214, 10, 0.1) 0%, rgba(255, 0, 110, 0.1) 100%);
+            border: 1px solid var(--warning);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .storage-warning.critical {
+            border-color: var(--error);
+            background: linear-gradient(135deg, rgba(255, 0, 110, 0.1) 0%, rgba(255, 0, 110, 0.2) 100%);
+        }
+
+        .warning-icon {
+            font-size: 1.25rem;
+        }
+
+        .warning-text {
+            font-weight: 600;
+            color: var(--warning);
+        }
+
+        .storage-warning.critical .warning-text {
+            color: var(--error);
+        }
+
+        .warning-details {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Storage Info Box */
+        .storage-info-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .storage-info-box .storage-limit {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* Add Torrent Section */
+        .add-torrent-section {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .add-torrent-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(135deg, #7b2cbf 0%, #ff006e 100%);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .torrent-input-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .torrent-input {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            background: rgba(13, 10, 15, 0.6);
+            border: 2px dashed rgba(255, 149, 0, 0.3);
+            border-radius: 14px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .torrent-input:focus {
+            outline: none;
+            border-style: solid;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(255, 149, 0, 0.1), var(--glow-primary);
+            background: rgba(13, 10, 15, 0.8);
+        }
+
+        .torrent-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Download Progress */
+        .download-progress {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .progress-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .progress-title::before {
+            content: '⏳';
+        }
+
+        .progress-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .progress-item {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            animation: fadeIn 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%;
+        }
+
+        .progress-status {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-secondary);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-dark);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #7b2cbf 0%, #ff006e 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .progress-details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Files Section */
+        .files-section {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .files-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .breadcrumb-item {
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .breadcrumb-item:hover {
+            color: var(--accent-primary);
+        }
+
+        .breadcrumb-item.active {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-muted);
+        }
+
+        .files-list {
+            padding: 1rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .file-item:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-color);
+        }
+
+        .file-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+
+        .file-icon.folder {
+            background: linear-gradient(135deg, #ffa502 0%, #ff6348 100%);
+            box-shadow: 0 4px 15px rgba(255, 165, 2, 0.3);
+        }
+
+        .file-icon.video {
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+        }
+
+        .file-icon.audio {
+            background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);
+        }
+
+        .file-icon.image {
+            background: linear-gradient(135deg, #ff9500 0%, #ffb347 100%);
+            box-shadow: 0 4px 15px rgba(255, 149, 0, 0.3);
+        }
+
+        .file-icon.document {
+            background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+            box-shadow: 0 4px 15px rgba(192, 57, 43, 0.3);
+        }
+
+        .file-icon.archive {
+            background: linear-gradient(135deg, #7f5539 0%, #9c6644 100%);
+            box-shadow: 0 4px 15px rgba(127, 85, 57, 0.3);
+        }
+
+        .file-icon.other {
+            background: rgba(255, 149, 0, 0.1);
+            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 1rem;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .file-item:hover .file-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 10px;
+            background: var(--bg-dark);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+        }
+
+        .action-btn.stream:hover {
+            background: var(--accent-tertiary);
+            color: white;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        /* Loading States */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 15, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            background: rgba(26, 20, 24, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 300px;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            border-color: var(--success);
+        }
+
+        .toast.error {
+            border-color: var(--error);
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+        }
+
+        .toast.success .toast-icon {
+            color: var(--success);
+        }
+
+        .toast.error .toast-icon {
+            color: var(--error);
+        }
+
+        /* Video Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .video-modal {
+            width: 90%;
+            max-width: 1000px;
+            background: rgba(26, 20, 24, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 149, 0, 0.2);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .video-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .video-title {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80%;
+        }
+
+        .video-container {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 aspect ratio */
+            background: #000;
+        }
+
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Error State */
+        .error-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--error);
+        }
+
+        .error-message {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 1rem;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .torrent-input-group {
+                flex-direction: column;
+            }
+
+            .file-actions {
+                opacity: 1;
+            }
+
+            .header-info {
+                flex-direction: column;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Aurora Background -->
+    <div class="bg-aurora">
+        <div class="aurora-layer aurora-1"></div>
+        <div class="aurora-layer aurora-2"></div>
+        <div class="aurora-layer aurora-3"></div>
+    </div>
+    <div class="bg-noise"></div>
+
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <span class="logo-text">CloudTorrent</span>
+            </div>
+            <div class="header-info" id="headerInfo">
+                <div>
+                    <div class="storage-bar">
+                        <div class="storage-fill" id="storageFill" style="width: 0%"></div>
+                    </div>
+                    <div class="storage-text"><span id="storageUsed">0</span> / <span id="storageMax">0</span> GB</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Storage Warning Banner -->
+        <div class="storage-warning hidden" id="storageWarning">
+            <span class="warning-icon">⚠️</span>
+            <span class="warning-text" id="warningText">Storage almost full!</span>
+            <span class="warning-details" id="warningDetails"></span>
+        </div>
+
+        <!-- Add Torrent Section -->
+        <div class="add-torrent-section" id="torrentSection">
+            <h2 class="section-title">
+                <span>🧲</span>
+                Add Torrent or Magnet Link
+            </h2>
+            <div class="storage-info-box" id="storageInfoBox">
+                <span>📊 Storage: <strong id="storageStatus">Loading...</strong></span>
+                <span class="storage-limit">Max: 100 GB</span>
+            </div>
+            <div class="torrent-input-group">
+                <input type="text" class="torrent-input" id="torrentInput" 
+                       placeholder="Paste magnet link or torrent URL here...">
+                <button class="btn btn-primary" onclick="addTorrent()" id="addTorrentBtn">
+                    <span>Add</span>
+                </button>
+            </div>
+            
+            <!-- Download Progress -->
+            <div class="download-progress hidden" id="downloadProgress">
+                <h3 class="progress-title">Active Downloads</h3>
+                <div class="progress-list" id="progressList"></div>
+            </div>
+        </div>
+
+        <!-- Files Browser -->
+        <div class="files-section" id="filesSection">
+            <div class="files-header">
+                <div class="breadcrumb" id="breadcrumb">
+                    <span class="breadcrumb-item active" data-id="root">My Files</span>
+                </div>
+                <button class="btn btn-secondary" onclick="refreshFiles()">
+                    <span>↻</span> Refresh
+                </button>
+            </div>
+            <div class="files-list" id="filesList">
+                <div class="empty-state">
+                    <div class="empty-icon">📁</div>
+                    <div class="empty-title">Loading files...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div class="error-state hidden" id="errorState">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">Not Configured</div>
+            <p class="error-message">Public access token not set. Please configure SEEDR_TOKEN environment variable.</p>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p id="loadingText">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Video Player Modal -->
+    <div class="modal-overlay hidden" id="videoModal" onclick="closeVideoModal(event)">
+        <div class="video-modal" onclick="event.stopPropagation()">
+            <div class="video-header">
+                <span class="video-title" id="videoTitle">Video Player</span>
+                <button class="btn btn-ghost" onclick="closeVideoModal()">&times;</button>
+            </div>
+            <div class="video-container">
+                <video id="videoPlayer" controls autoplay>
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentFolder = 'root';
+        let folderStack = [{ id: 'root', name: 'My Files' }];
+
+        // Utility Functions
+        function showLoading(text = 'Loading...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="toast-icon">${type === 'success' ? '✓' : '✕'}</span>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function getFileType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const types = {
+                video: ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v'],
+                audio: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma'],
+                image: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'],
+                document: ['pdf', 'doc', 'docx', 'txt', 'rtf', 'xls', 'xlsx', 'ppt', 'pptx'],
+                archive: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2']
+            };
+            for (const [type, exts] of Object.entries(types)) {
+                if (exts.includes(ext)) return type;
+            }
+            return 'other';
+        }
+
+        function getFileIcon(type) {
+            const icons = {
+                folder: '📁',
+                video: '🎬',
+                audio: '🎵',
+                image: '🖼️',
+                document: '📄',
+                archive: '📦',
+                other: '📎'
+            };
+            return icons[type] || icons.other;
+        }
+
+        function isStreamable(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            return ['mp4', 'webm', 'mov', 'm4v'].includes(ext);
+        }
+
+        // API Functions
+        async function apiRequest(endpoint) {
+            try {
+                const response = await fetch(endpoint);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        // File Functions
+        async function loadFiles(folderId = 'root') {
+            try {
+                let data;
+                if (folderId === 'root') {
+                    data = await apiRequest('/api/drive');
+                } else {
+                    data = await apiRequest(`/api/folder/${folderId}`);
+                }
+
+                currentFolder = folderId;
+                
+                // Update storage info
+                if (data.space_max) {
+                    const usedBytes = data.space_used || 0;
+                    const maxBytes = data.space_max || 0;
+                    const usedGB = (usedBytes / (1024 * 1024 * 1024)).toFixed(2);
+                    const maxGB = (maxBytes / (1024 * 1024 * 1024)).toFixed(2);
+                    const percentage = (usedBytes / maxBytes) * 100;
+                    const freeGB = ((maxBytes - usedBytes) / (1024 * 1024 * 1024)).toFixed(2);
+
+                    document.getElementById('storageUsed').textContent = usedGB;
+                    document.getElementById('storageMax').textContent = maxGB;
+                    document.getElementById('storageFill').style.width = percentage + '%';
+                    
+                    // Update storage status in torrent section
+                    const storageStatus = document.getElementById('storageStatus');
+                    if (storageStatus) {
+                        storageStatus.textContent = `${usedGB} GB used / ${freeGB} GB free`;
+                        storageStatus.style.color = percentage > 90 ? 'var(--error)' : 
+                                                    percentage > 70 ? 'var(--warning)' : 'var(--success)';
+                    }
+
+                    // Show warning banner if storage is running low
+                    const warningBanner = document.getElementById('storageWarning');
+                    const warningText = document.getElementById('warningText');
+                    const warningDetails = document.getElementById('warningDetails');
+                    
+                    if (percentage >= 90) {
+                        warningBanner.classList.remove('hidden');
+                        warningBanner.classList.add('critical');
+                        warningText.textContent = 'Storage almost full!';
+                        warningDetails.textContent = `Only ${freeGB} GB remaining. Delete some files to add new torrents.`;
+                    } else if (percentage >= 70) {
+                        warningBanner.classList.remove('hidden', 'critical');
+                        warningText.textContent = 'Storage running low';
+                        warningDetails.textContent = `${freeGB} GB remaining out of ${maxGB} GB.`;
+                    } else {
+                        warningBanner.classList.add('hidden');
+                    }
+                }
+                
+                renderFiles(data);
+                
+                // Check for active downloads
+                if (data.torrents && data.torrents.length > 0) {
+                    renderDownloads(data.torrents);
+                } else {
+                    hideDownloads();
+                }
+            } catch (error) {
+                showToast('Failed to load files: ' + error.message, 'error');
+            }
+        }
+
+        let pollingInterval = null;
+
+        function renderDownloads(torrents) {
+            const container = document.getElementById('downloadProgress');
+            const list = document.getElementById('progressList');
+            const activeDownloads = torrents.filter(t => t.progress < 100);
+
+            if (activeDownloads.length === 0) {
+                hideDownloads();
+                return;
+            }
+
+            container.classList.remove('hidden');
+            
+            let html = '';
+            activeDownloads.forEach(torrent => {
+                const progress = torrent.progress || 0;
+                const size = torrent.size ? formatBytes(torrent.size) : 'Calculating...';
+                html += `
+                    <div class="progress-item">
+                        <div class="progress-header">
+                            <span class="progress-name">${escapeHtml(torrent.name || 'Downloading...')}</span>
+                            <span class="progress-status">${progress}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="progress-details">
+                            <span>Size: ${size}</span>
+                            <span>${progress < 100 ? 'Downloading...' : 'Complete'}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            list.innerHTML = html;
+
+            // Start polling for updates if not already polling
+            if (!pollingInterval) {
+                pollingInterval = setInterval(() => {
+                    loadFiles(currentFolder);
+                }, 3000);
+            }
+        }
+
+        function hideDownloads() {
+            const container = document.getElementById('downloadProgress');
+            container.classList.add('hidden');
+            
+            // Stop polling
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+
+        function renderFiles(data) {
+            const container = document.getElementById('filesList');
+            const folders = data.folders || [];
+            const files = data.files || [];
+
+            if (folders.length === 0 && files.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📁</div>
+                        <div class="empty-title">No files yet</div>
+                        <p>This folder is empty</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+
+            // Render folders
+            folders.forEach(folder => {
+                html += `
+                    <div class="file-item" onclick="openFolder('${folder.id}', '${escapeHtml(folder.name)}')">
+                        <div class="file-icon folder">${getFileIcon('folder')}</div>
+                        <div class="file-info">
+                            <div class="file-name">${escapeHtml(folder.name)}</div>
+                            <div class="file-meta">
+                                <span>${formatBytes(folder.size || 0)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Render files
+            files.forEach(file => {
+                const type = getFileType(file.name);
+                const streamable = isStreamable(file.name);
+                const fileId = file.folder_file_id || file.id;
+                html += `
+                    <div class="file-item">
+                        <div class="file-icon ${type}">${getFileIcon(type)}</div>
+                        <div class="file-info">
+                            <div class="file-name">${escapeHtml(file.name)}</div>
+                            <div class="file-meta">
+                                <span>${formatBytes(file.size || 0)}</span>
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            ${streamable ? `
+                            <button class="action-btn stream" onclick="streamFile('${fileId}', '${escapeHtml(file.name)}')" title="Stream">
+                                ▶️
+                            </button>
+                            ` : ''}
+                            <button class="action-btn" onclick="downloadFile('${fileId}')" title="Download">
+                                ⬇️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function openFolder(folderId, folderName) {
+            folderStack.push({ id: folderId, name: folderName });
+            updateBreadcrumb();
+            showLoading('Loading folder...');
+            loadFiles(folderId).finally(hideLoading);
+        }
+
+        function navigateToFolder(index) {
+            folderStack = folderStack.slice(0, index + 1);
+            updateBreadcrumb();
+            const folder = folderStack[folderStack.length - 1];
+            showLoading('Loading folder...');
+            loadFiles(folder.id).finally(hideLoading);
+        }
+
+        function updateBreadcrumb() {
+            const container = document.getElementById('breadcrumb');
+            let html = '';
+            
+            folderStack.forEach((folder, index) => {
+                if (index > 0) {
+                    html += '<span class="breadcrumb-separator">/</span>';
+                }
+                const isLast = index === folderStack.length - 1;
+                html += `
+                    <span class="breadcrumb-item ${isLast ? 'active' : ''}" 
+                          onclick="navigateToFolder(${index})">${escapeHtml(folder.name)}</span>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        async function downloadFile(fileId) {
+            showLoading('Getting download link...');
+            try {
+                const data = await apiRequest(`/api/file/${fileId}`);
+                if (data.url) {
+                    window.open(data.url, '_blank');
+                    showToast('Download started!');
+                } else {
+                    throw new Error('No download URL available');
+                }
+            } catch (error) {
+                showToast('Failed to get download link: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function streamFile(fileId, fileName) {
+            showLoading('Loading video...');
+            try {
+                const data = await apiRequest(`/api/file/${fileId}`);
+                if (data.url) {
+                    document.getElementById('videoTitle').textContent = fileName;
+                    const player = document.getElementById('videoPlayer');
+                    player.src = data.url;
+                    document.getElementById('videoModal').classList.remove('hidden');
+                    player.play();
+                } else {
+                    throw new Error('No stream URL available');
+                }
+            } catch (error) {
+                showToast('Failed to load video: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function closeVideoModal(event) {
+            if (!event || event.target === event.currentTarget) {
+                const player = document.getElementById('videoPlayer');
+                player.pause();
+                player.src = '';
+                document.getElementById('videoModal').classList.add('hidden');
+            }
+        }
+
+        function refreshFiles() {
+            showLoading('Refreshing...');
+            loadFiles(currentFolder).finally(hideLoading);
+        }
+
+        async function addTorrent() {
+            const input = document.getElementById('torrentInput');
+            const link = input.value.trim();
+
+            if (!link) {
+                showToast('Please enter a magnet link or torrent URL', 'error');
+                return;
+            }
+
+            showLoading('Adding torrent...');
+
+            try {
+                const response = await fetch('/api/torrent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ link })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to add torrent');
+                }
+
+                input.value = '';
+                showToast('Torrent added successfully!');
+                
+                // Refresh after a short delay
+                setTimeout(() => loadFiles(currentFolder), 2000);
+            } catch (error) {
+                showToast('Failed to add torrent: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Add enter key support for torrent input
+        document.getElementById('torrentInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTorrent();
+        });
+
+        // Initialize
+        async function init() {
+            showLoading('Loading files...');
+            try {
+                const status = await apiRequest('/api/status');
+                
+                if (!status.public_access) {
+                    document.getElementById('torrentSection').classList.add('hidden');
+                    document.getElementById('filesSection').classList.add('hidden');
+                    document.getElementById('headerInfo').classList.add('hidden');
+                    document.getElementById('errorState').classList.remove('hidden');
+                    hideLoading();
+                    return;
+                }
+
+                await loadFiles();
+            } catch (error) {
+                document.getElementById('torrentSection').classList.add('hidden');
+                document.getElementById('filesSection').classList.add('hidden');
+                document.getElementById('headerInfo').classList.add('hidden');
+                document.getElementById('errorState').classList.remove('hidden');
+                console.error('Init error:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeVideoModal();
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
