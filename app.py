@@ -50,6 +50,10 @@ def save_config(config):
         return False
 
 
+# Load credentials from environment variables
+SEEDR_EMAIL = os.environ.get('SEEDR_EMAIL', '')
+SEEDR_PASSWORD = os.environ.get('SEEDR_PASSWORD', '')
+
 # Load token from config file first, then fall back to environment variable
 config = load_config()
 PUBLIC_TOKEN = config.get('seedr_token', '') or os.environ.get('SEEDR_TOKEN', '')
@@ -59,24 +63,60 @@ public_seedr = None
 owner_sessions = {}
 
 
+def login_with_credentials():
+    """Login using environment credentials and return a SeedrAPI instance"""
+    global public_seedr, PUBLIC_TOKEN
+    if not SEEDR_AVAILABLE:
+        print("Seedr package not available")
+        return False
+    if not SEEDR_EMAIL or not SEEDR_PASSWORD:
+        print("No Seedr credentials configured")
+        return False
+    try:
+        seedr = SeedrAPI(email=SEEDR_EMAIL, password=SEEDR_PASSWORD)
+        seedr.get_drive()
+        public_seedr = seedr
+        token = getattr(seedr, 'access_token', None)
+        if token:
+            PUBLIC_TOKEN = token
+            config = load_config()
+            config['seedr_token'] = token
+            save_config(config)
+        print("Logged in with credentials successfully")
+        return True
+    except InvalidLogin:
+        print("Invalid Seedr credentials")
+        return False
+    except Exception as e:
+        print(f"Failed to login with credentials: {e}")
+        return False
+
+
 def init_public_client():
-    """Initialize the public Seedr client with the environment token"""
+    """Initialize the public Seedr client - try credentials first, then token"""
     global public_seedr
-    if SEEDR_AVAILABLE and PUBLIC_TOKEN:
+    if not SEEDR_AVAILABLE:
+        return False
+    if SEEDR_EMAIL and SEEDR_PASSWORD:
+        if login_with_credentials():
+            return True
+    if PUBLIC_TOKEN:
         try:
             public_seedr = SeedrAPI(token=PUBLIC_TOKEN)
-            print("Public Seedr client initialized successfully")
+            print("Public Seedr client initialized with token")
             return True
         except Exception as e:
-            print(f"Failed to initialize public client: {e}")
+            print(f"Token invalid, trying credentials: {e}")
+            if SEEDR_EMAIL and SEEDR_PASSWORD:
+                return login_with_credentials()
             return False
     return False
 
 
 def get_public_client():
-    """Get the public Seedr client"""
+    """Get the public Seedr client, re-login if needed"""
     global public_seedr
-    if public_seedr is None and PUBLIC_TOKEN:
+    if public_seedr is None:
         init_public_client()
     return public_seedr
 
@@ -341,13 +381,14 @@ def owner_delete_file(file_id):
 if __name__ == '__main__':
     print("\n  CloudTorrent - Public Access Mode")
     print("  ==================================")
-    if PUBLIC_TOKEN:
-        if init_public_client():
-            print("  Public access: ENABLED")
-        else:
-            print("  Public access: FAILED (invalid token)")
+    if init_public_client():
+        print("  Public access: ENABLED")
+    elif SEEDR_EMAIL and SEEDR_PASSWORD:
+        print("  Public access: FAILED (check credentials)")
+    elif PUBLIC_TOKEN:
+        print("  Public access: FAILED (invalid token)")
     else:
-        print("  Public access: DISABLED (no SEEDR_TOKEN set)")
+        print("  Public access: DISABLED (no credentials or token set)")
     print("\n  Public:  http://localhost:5000")
     print("  Owner:   http://localhost:5000/owner-login\n")
     app.run(debug=True, host='0.0.0.0', port=5000)
