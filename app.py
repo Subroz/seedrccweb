@@ -1,5 +1,5 @@
 """
-Seedr Cloud Downloader - Flask Backend
+Seedr Cloud Downloader - Flask Backend.
 A web application that allows users to download files via Seedr.cc
 Public access mode with owner authentication for token management.
 """
