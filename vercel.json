@@ -11,9 +11,5 @@
             "src": "/(.*)",
             "dest": "app.py"
         }
-    ],
-    "env": {
-        "SEEDR_EMAIL": "@seedr_email",
-        "SEEDR_PASSWORD": "@seedr_password"
-    }
+    ]
 }
