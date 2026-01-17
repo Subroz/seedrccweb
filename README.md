@@ -610,7 +610,7 @@ If you encounter any issues or have questions:
 
 1. **Check the Troubleshooting section** above
 2. **Search existing issues** on [GitHub Issues](https://github.com/Subroz/seedrccweb/issues)
-3. **Create a new issue** with detailed information about your problem
+3. **Create a new issue** with detailed information about your problem.
 
 ---
 
