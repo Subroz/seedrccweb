@@ -83,19 +83,26 @@ pip install flask flask-cors seedr
 
 You can enable public access by either:
 
-**Option A: Using config.json (Recommended)**
+**Option A: Using Environment Variables (Recommended)**
+```bash
+export SEEDR_EMAIL="your@email.com"
+export SEEDR_PASSWORD="your-password"
+```
+This automatically logs in on startup and keeps public access working even if tokens expire.
+
+**Option B: Using config.json**
 ```json
 {
     "seedr_token": "your-access-token-here"
 }
 ```
 
-**Option B: Using Environment Variable**
+**Option C: Using Token Environment Variable**
 ```bash
 export SEEDR_TOKEN="your-access-token-here"
 ```
 
-> **Note:** You don't need to configure manually. Just login via the owner panel, and the token will be auto-saved!
+> **Note:** You don't need to configure manually. Just login via the owner panel, and the token will be auto-saved! For Replit deployment, use Secrets to store SEEDR_EMAIL and SEEDR_PASSWORD.
 
 #### 4️⃣ Run the Application
 
@@ -163,7 +170,9 @@ fetch('/api/owner/torrent', {
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SEEDR_TOKEN` | Seedr access token for public mode | None |
+| `SEEDR_EMAIL` | Seedr account email for auto-login (recommended) | None |
+| `SEEDR_PASSWORD` | Seedr account password for auto-login (recommended) | None |
+| `SEEDR_TOKEN` | Seedr access token for public mode (alternative) | None |
 | `FLASK_DEBUG` | Enable Flask debug mode | `False` |
 | `FLASK_RUN_PORT` | Port to run the server on | `5000` |
 
