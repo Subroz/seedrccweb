@@ -17,8 +17,10 @@ python app.py
 ```
 
 ## Configuration
-- **SEEDR_TOKEN**: Environment variable for Seedr API access token
-- Alternatively, the owner can log in at `/owner-login` to auto-save the token to `config.json`
+- **SEEDR_EMAIL** and **SEEDR_PASSWORD**: Environment secrets for automatic Seedr login (recommended)
+- **SEEDR_TOKEN**: Alternative - static token for Seedr API access
+- The app auto-logs in with credentials on startup and saves the token to `config.json`
+- Owner can also log in manually at `/owner-login` to update the token
 
 ## Dependencies
 - Flask >= 2.0.0
