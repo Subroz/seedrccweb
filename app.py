@@ -222,6 +222,60 @@ def add_torrent():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/file/<file_id>', methods=['DELETE'])
+def delete_file(file_id):
+    """Delete a file (PUBLIC)"""
+    seedr = get_public_client()
+    if not seedr:
+        return jsonify({'error': 'Public access not configured'}), 503
+    try:
+        result = seedr.delete_file(file_id)
+        return jsonify({'success': True, 'result': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/folder/<folder_id>', methods=['DELETE'])
+def delete_folder(folder_id):
+    """Delete a folder and all its contents (PUBLIC)"""
+    seedr = get_public_client()
+    if not seedr:
+        return jsonify({'error': 'Public access not configured'}), 503
+    try:
+        result = seedr.delete_folder(folder_id)
+        return jsonify({'success': True, 'result': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/torrent/<torrent_id>', methods=['DELETE'])
+def delete_torrent(torrent_id):
+    """Delete / cancel a torrent (PUBLIC)"""
+    seedr = get_public_client()
+    if not seedr:
+        return jsonify({'error': 'Public access not configured'}), 503
+    try:
+        result = seedr.delete_torrent(torrent_id)
+        return jsonify({'success': True, 'result': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/folder/<folder_id>/zip', methods=['POST'])
+def create_folder_zip(folder_id):
+    """Create a ZIP archive download link for a folder (PUBLIC)"""
+    seedr = get_public_client()
+    if not seedr:
+        return jsonify({'error': 'Public access not configured'}), 503
+    try:
+        archive = seedr.create_archive(folder_id)
+        result_dict = archive.to_dict() if hasattr(archive, 'to_dict') else (archive if isinstance(archive, dict) else {})
+        url = result_dict.get('url') or result_dict.get('archive_url') or result_dict.get('link')
+        return jsonify({'success': True, 'url': url, 'result': result_dict})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # ==================== OWNER ROUTES ====================
 
 @app.route('/owner-login')

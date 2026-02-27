@@ -642,6 +642,47 @@
             color: white;
         }
 
+        .action-btn.delete:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        .action-btn.zip:hover {
+            background: var(--success);
+            color: white;
+        }
+
+        /* ZIP Modal */
+        .zip-modal {
+            width: 90%;
+            max-width: 600px;
+            background: rgba(26, 20, 24, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 149, 0, 0.2);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .zip-link-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            margin-top: 1rem;
+        }
+
+        .zip-link-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: rgba(13, 10, 15, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            min-width: 0;
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -965,6 +1006,25 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- ZIP Archive Modal -->
+    <div class="modal-overlay hidden" id="zipModal" onclick="closeZipModal(event)">
+        <div class="zip-modal" onclick="event.stopPropagation()">
+            <div class="video-header">
+                <span class="video-title">📦 ZIP Archive Ready</span>
+                <button class="btn btn-ghost" onclick="closeZipModal()">&times;</button>
+            </div>
+            <div style="padding: 1.5rem">
+                <p style="color: var(--text-secondary); margin-bottom: 0.5rem" id="zipFolderName"></p>
+                <p style="color: var(--text-muted); font-size: 0.85rem">Use the link below to download the ZIP archive. The link may expire after a while.</p>
+                <div class="zip-link-row">
+                    <input type="text" class="zip-link-input" id="zipLinkInput" readonly />
+                    <button class="btn btn-secondary" onclick="copyZipLink()">📋 Copy</button>
+                    <a class="btn btn-primary" id="zipDownloadBtn" href="" target="_blank">⬇️ Download</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Video Player Modal -->
     <div class="modal-overlay hidden" id="videoModal" onclick="closeVideoModal(event)">
         <div class="video-modal" onclick="event.stopPropagation()">
@@ -1148,11 +1208,17 @@
             activeDownloads.forEach(torrent => {
                 const progress = torrent.progress || 0;
                 const size = torrent.size ? formatBytes(torrent.size) : 'Calculating...';
+                const torrentId = torrent.id || torrent.torrent_id || '';
                 html += `
                     <div class="progress-item">
                         <div class="progress-header">
                             <span class="progress-name">${escapeHtml(torrent.name || 'Downloading...')}</span>
-                            <span class="progress-status">${progress}%</span>
+                            <div style="display:flex;align-items:center;gap:0.5rem">
+                                <span class="progress-status">${progress}%</span>
+                                <button class="action-btn delete" style="width:30px;height:30px;opacity:1;flex-shrink:0"
+                                    onclick="deleteTorrent('${torrentId}', '${escapeHtml(torrent.name || 'torrent')}', event)"
+                                    title="Delete torrent">🗑️</button>
+                            </div>
                         </div>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width: ${progress}%"></div>
@@ -1215,6 +1281,14 @@
                                 <span>${formatBytes(folder.size || 0)}</span>
                             </div>
                         </div>
+                        <div class="file-actions">
+                            <button class="action-btn zip" onclick="createZip('${folder.id}', '${escapeHtml(folder.name)}', event)" title="Create ZIP archive">
+                                🗜️
+                            </button>
+                            <button class="action-btn delete" onclick="deleteFolder('${folder.id}', '${escapeHtml(folder.name)}', event)" title="Delete folder">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
                 `;
             });
@@ -1241,6 +1315,9 @@
                             ` : ''}
                             <button class="action-btn" onclick="downloadFile('${fileId}')" title="Download">
                                 ⬇️
+                            </button>
+                            <button class="action-btn delete" onclick="deleteFile('${fileId}', '${escapeHtml(file.name)}', event)" title="Delete file">
+                                🗑️
                             </button>
                         </div>
                     </div>
@@ -1340,6 +1417,100 @@
             loadFiles(currentFolder).finally(hideLoading);
         }
 
+        async function deleteFile(fileId, fileName, event) {
+            event.stopPropagation();
+            if (!confirm(`Delete "${fileName}"?\n\nThis action cannot be undone.`)) return;
+            showLoading('Deleting file...');
+            try {
+                const response = await fetch(`/api/file/${fileId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Delete failed');
+                showToast('File deleted successfully!');
+                loadFiles(currentFolder);
+            } catch (error) {
+                showToast('Failed to delete: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deleteFolder(folderId, folderName, event) {
+            event.stopPropagation();
+            if (!confirm(`Delete folder "${folderName}" and all its contents?\n\nThis action cannot be undone.`)) return;
+            showLoading('Deleting folder...');
+            try {
+                const response = await fetch(`/api/folder/${folderId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Delete failed');
+                showToast('Folder deleted successfully!');
+                loadFiles(currentFolder);
+            } catch (error) {
+                showToast('Failed to delete: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deleteTorrent(torrentId, torrentName, event) {
+            event.stopPropagation();
+            if (!confirm(`Delete torrent "${torrentName}"?\n\nThis will cancel and remove the download.`)) return;
+            showLoading('Deleting torrent...');
+            try {
+                const response = await fetch(`/api/torrent/${torrentId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Delete failed');
+                showToast('Torrent deleted!');
+                loadFiles(currentFolder);
+            } catch (error) {
+                showToast('Failed to delete torrent: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function createZip(folderId, folderName, event) {
+            event.stopPropagation();
+            showLoading('Creating ZIP archive\u2026 This may take a moment.');
+            try {
+                const response = await fetch(`/api/folder/${folderId}/zip`, { method: 'POST' });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to create ZIP');
+                if (data.url) {
+                    showZipModal(folderName, data.url);
+                } else {
+                    showToast('ZIP created but no download URL returned.', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to create ZIP: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showZipModal(folderName, url) {
+            document.getElementById('zipFolderName').textContent = `Folder: ${folderName}`;
+            document.getElementById('zipLinkInput').value = url;
+            document.getElementById('zipDownloadBtn').href = url;
+            document.getElementById('zipModal').classList.remove('hidden');
+        }
+
+        function closeZipModal(event) {
+            if (!event || event.target === event.currentTarget) {
+                document.getElementById('zipModal').classList.add('hidden');
+            }
+        }
+
+        function copyZipLink() {
+            const input = document.getElementById('zipLinkInput');
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(input.value).then(() => showToast('ZIP link copied to clipboard!'));
+            } else {
+                input.select();
+                document.execCommand('copy');
+                showToast('ZIP link copied!');
+            }
+        }
+
         async function addTorrent() {
             const input = document.getElementById('torrentInput');
             const link = input.value.trim();
@@ -1412,6 +1583,7 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeVideoModal();
+                closeZipModal();
             }
         });
 
